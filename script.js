@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 v5.3 스크립트 로드 완료');
+
+    // --- Core Selectors ---
+    const navTabs = document.querySelectorAll('.nav-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
     const itemBody = document.getElementById('itemBody');
     const addRowBtn = document.getElementById('addRowBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -7,23 +12,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const subtotalEl = document.getElementById('subtotal');
     const discountAmountEl = document.getElementById('discountAmount');
-    const vatAmountEl = document.getElementById('vatAmount');
     const finalTotalEl = document.getElementById('finalTotal');
     const totalAmountTextEl = document.getElementById('totalAmountText');
     const discountLabelEl = document.getElementById('discountLabel');
     const currentDateEl = document.getElementById('currentDate');
 
-    // Set Today's Date
-    currentDateEl.innerText = new Date().toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    const pdfBtn = document.getElementById('pdfBtn');
+    const screenshotBtn = document.getElementById('screenshotBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const quotationArea = document.getElementById('quotationArea');
 
-    // Initial 1 Row (v4.5 Default Data)
-    addRow("헬스매트", "20t", "1", "8163");
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mobileOverlay = document.getElementById('mobile-overlay');
+    const sidebar = document.getElementById('sidebar');
 
-    // Account Tabs Logic
     const accountTabs = document.querySelectorAll('.account-tab');
     const accountInfo = document.getElementById('accountInfo');
     const accounts = {
@@ -31,410 +33,250 @@ document.addEventListener('DOMContentLoaded', () => {
         'no-issue': '카카오뱅크 3333-14-2092777 이진영'
     };
 
+    // --- Tab Switching Logic (v5.0) ---
+    navTabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = tab.dataset.tab;
+            console.log('Tab Switching to:', target);
+
+            navTabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+
+            tab.classList.add('active');
+            const targetContent = document.getElementById(`${target}-view`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+
+    // --- Initial Setup ---
+    if (currentDateEl) {
+        currentDateEl.innerText = new Date().toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+
+    // Account Tab Sync
     accountTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             accountTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            accountInfo.innerText = accounts[tab.dataset.type];
+            if (accountInfo) accountInfo.innerText = accounts[tab.dataset.type];
         });
     });
 
-    // Discount Label Sync on Start
-    discountRateInput.value = 10;
-    discountLabelEl.innerText = discountRateInput.value;
+    // Initial Row
+    addRow("헬스매트", "20t", "1", "8163");
+
+    if (discountRateInput) {
+        discountRateInput.value = 10;
+        if (discountLabelEl) discountLabelEl.innerText = discountRateInput.value;
+    }
     updateTotals();
 
-    // Add Row Event
-    addRowBtn.addEventListener('click', () => addRow());
+    // --- Command Buttons ---
+    if (addRowBtn) addRowBtn.addEventListener('click', () => addRow());
 
-    // 자주 사용하는 품목 퀵 추가 (v4.7)
     const addMat20Btn = document.getElementById('addMat20');
     const addMat25Btn = document.getElementById('addMat25');
+    if (addMat20Btn) addMat20Btn.addEventListener('click', () => addRow("헬스매트", "20t", "1", "8163"));
+    if (addMat25Btn) addMat25Btn.addEventListener('click', () => addRow("헬스매트", "25t", "1", "9967"));
 
-    if (addMat20Btn) {
-        addMat20Btn.addEventListener('click', () => addRow("헬스매트", "20t", "1", "8163"));
-    }
-    if (addMat25Btn) {
-        addMat25Btn.addEventListener('click', () => addRow("헬스매트", "25t", "1", "9967"));
-    }
-
-    // Clear All
-    clearBtn.addEventListener('click', () => {
-        if (confirm('대장님, 모든 내용을 초기화하시겠습니까?')) {
-            itemBody.innerHTML = '';
-            addRow("헬스매트", "20t", "1", "8163");
-            discountRateInput.value = 10;
-
-            // 계좌 정보 초기화 (미발행 디폴트)
-            accountTabs.forEach(t => t.classList.remove('active'));
-            const noIssueTab = Array.from(accountTabs).find(t => t.dataset.type === 'no-issue');
-            if (noIssueTab) {
-                noIssueTab.classList.add('active');
-                accountInfo.innerText = accounts['no-issue'];
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (confirm('대장님, 모든 내용을 초기화하시겠습니까?')) {
+                itemBody.innerHTML = '';
+                addRow("헬스매트", "20t", "1", "8163");
+                if (discountRateInput) discountRateInput.value = 10;
+                updateTotals();
             }
+        });
+    }
 
-            updateTotals();
-        }
-    });
+    if (printBtn) printBtn.addEventListener('click', () => window.print());
 
-    const pdfBtn = document.getElementById('pdfBtn');
-    const screenshotBtn = document.getElementById('screenshotBtn');
-    const copyBtn = document.getElementById('copyBtn');
-    const quotationArea = document.getElementById('quotationArea');
-
-    // ... (rest of initializations)
-
-    // Integration of Capture functions for PDF, Image, and Copy
+    // --- Capture & Export (v4.8) ---
     async function getQuotationCanvas() {
-        // 1. Hide no-print elements and set offset safety
         const noPrintElements = document.querySelectorAll('.no-print');
         noPrintElements.forEach(el => el.style.display = 'none');
-
-        // 2. Hide placeholders during capture
         quotationArea.classList.add('capturing-mode');
-
-        // 3. Temporarily set container styles to ensure zero-offset
         const originalScrollX = window.scrollX;
         const originalScrollY = window.scrollY;
         window.scrollTo(0, 0);
 
         try {
-            const canvas = await html2canvas(quotationArea, {
-                scale: 3, // Quality improvement
+            return await html2canvas(quotationArea, {
+                scale: 3,
                 useCORS: true,
                 backgroundColor: '#ffffff',
                 logging: false,
-                windowWidth: 1000, // Fixed width for consistent layout
+                windowWidth: 1000,
                 scrollX: 0,
                 scrollY: 0,
                 x: 0,
                 y: 0
             });
-            return canvas;
         } finally {
-            // Restore visibility, class and position
             noPrintElements.forEach(el => el.style.display = '');
             quotationArea.classList.remove('capturing-mode');
             window.scrollTo(originalScrollX, originalScrollY);
         }
     }
 
-    // Clipboard Copy (Image)
-    copyBtn.addEventListener('click', async () => {
-        try {
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
             copyBtn.innerText = '⏳ 처리 중...';
-            const canvas = await getQuotationCanvas();
-
-            canvas.toBlob(async (blob) => {
-                try {
+            try {
+                const canvas = await getQuotationCanvas();
+                canvas.toBlob(async (blob) => {
                     const item = new ClipboardItem({ "image/png": blob });
                     await navigator.clipboard.write([item]);
-
-                    const originalText = '📋 클립보드 복사(이미지)';
                     copyBtn.innerText = '✅ 복사 완료!';
-                    copyBtn.classList.add('btn-success');
+                    setTimeout(() => copyBtn.innerText = '📋 클립보드 복사(이미지)', 2000);
+                }, 'image/png');
+            } catch (err) {
+                alert('복사 중 오류가 발생했습니다.');
+                copyBtn.innerText = '📋 클립보드 복사(이미지)';
+            }
+        });
+    }
 
-                    setTimeout(() => {
-                        copyBtn.innerText = originalText;
-                        copyBtn.classList.remove('btn-success');
-                    }, 2000);
-                } catch (err) {
-                    console.error('Clipboard write failed:', err);
-                    alert('클립보드 복사 권한이 없거나 지원되지 않는 브라우저입니다.');
-                    copyBtn.innerText = '📋 클립보드 복사(이미지)';
-                }
-            }, 'image/png');
-
-        } catch (error) {
-            console.error('Copy failed:', error);
-            alert('복사 중 오류가 발생했습니다.');
-            copyBtn.innerText = '📋 클립보드 복사(이미지)';
-        }
-    });
-
-    // PDF Save
-    pdfBtn.addEventListener('click', async () => {
-        const { jsPDF } = window.jspdf;
-        try {
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', async () => {
+            const { jsPDF } = window.jspdf;
             pdfBtn.innerText = '⏳ 처리 중...';
-            const canvas = await getQuotationCanvas();
+            try {
+                const canvas = await getQuotationCanvas();
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`견적서_${Date.now()}.pdf`);
+                pdfBtn.innerText = '📄 PDF 저장';
+            } catch (err) {
+                alert('PDF 저장 오류');
+                pdfBtn.innerText = '📄 PDF 저장';
+            }
+        });
+    }
 
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgProps = pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`견적서_${new Date().getTime()}.pdf`);
-            pdfBtn.innerText = '📄 PDF 저장';
-        } catch (error) {
-            console.error('PDF export failed:', error);
-            alert('PDF 저장 중 오류가 발생했습니다.');
-            pdfBtn.innerText = '📄 PDF 저장';
-        }
-    });
-
-    // Screenshot Save
-    screenshotBtn.addEventListener('click', async () => {
-        try {
+    if (screenshotBtn) {
+        screenshotBtn.addEventListener('click', async () => {
             screenshotBtn.innerText = '⏳ 캡처 중...';
-            const canvas = await getQuotationCanvas();
-
-            const link = document.createElement('a');
-            link.download = `견적서_캡처_${new Date().getTime()}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            screenshotBtn.innerText = '🖼️ 이미지 저장';
-        } catch (error) {
-            console.error('Screenshot failed:', error);
-            alert('이미지 저장 중 오류가 발생했습니다.');
-            screenshotBtn.innerText = '🖼️ 이미지 저장';
-        }
-    });
-
-    // Print
-    printBtn.addEventListener('click', () => {
-        window.print();
-    });
-
-    // Discount Rate Change
-    discountRateInput.addEventListener('input', () => {
-        discountLabelEl.innerText = discountRateInput.value || 0;
-        updateTotals();
-    });
-
-    // --- Storage Logic (v3.0) ---
-    const saveDataBtn = document.getElementById('saveDataBtn');
-    const savedListEl = document.getElementById('savedList');
-    const favoriteListEl = document.getElementById('favoriteList');
-
-    function getStorageData() {
-        return JSON.parse(localStorage.getItem('inspo_quotations') || '[]');
-    }
-
-    function setStorageData(data) {
-        localStorage.setItem('inspo_quotations', JSON.stringify(data));
-        renderList();
-    }
-
-    function renderList() {
-        const data = getStorageData();
-        savedListEl.innerHTML = '';
-        favoriteListEl.innerHTML = '';
-
-        if (data.length === 0) {
-            savedListEl.innerHTML = '<p class="empty-msg">저장된 견적이 없습니다.</p>';
-            favoriteListEl.innerHTML = '<p class="empty-msg">즐겨찾기가 없습니다.</p>';
-            return;
-        }
-
-        data.sort((a, b) => b.id - a.id); // Latest first
-
-        data.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'saved-item';
-            div.innerHTML = `
-                <div class="title">${item.customer || '수신인 미정'}</div>
-                <div class="date">${new Date(item.id).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-                <div class="actions">
-                    <button class="btn-action btn-fav ${item.isFav ? 'active' : ''}" onclick="event.stopPropagation(); window.antigravity_toggleFav(${item.id})">★</button>
-                    <button class="btn-action btn-del" onclick="event.stopPropagation(); window.antigravity_deleteItem(${item.id})">🗑️</button>
-                </div>
-            `;
-            div.onclick = () => loadQuotation(item);
-
-            if (item.isFav) {
-                const favDiv = div.cloneNode(true);
-                favDiv.onclick = () => loadQuotation(item);
-                favoriteListEl.appendChild(favDiv);
-            }
-            savedListEl.appendChild(div);
-        });
-    }
-
-    window.antigravity_toggleFav = (id) => {
-        const data = getStorageData();
-        const item = data.find(i => i.id === id);
-        if (item) {
-            item.isFav = !item.isFav;
-            setStorageData(data);
-        }
-    };
-
-    window.antigravity_deleteItem = (id) => {
-        if (confirm('이 견적 기록을 삭제할까요?')) {
-            const data = getStorageData();
-            const filtered = data.filter(i => i.id !== id);
-            setStorageData(filtered);
-        }
-    };
-
-    saveDataBtn.addEventListener('click', () => {
-        const customer = document.getElementById('customerName').innerText.trim();
-        const rows = itemBody.querySelectorAll('tr');
-        const items = [];
-
-        rows.forEach(row => {
-            const name = row.querySelector('.item-name').innerText;
-            const option = row.querySelector('.item-option').innerText;
-            const qty = row.querySelector('.item-qty').innerText;
-            const price = row.querySelector('.item-price').innerText;
-            if (name || qty || price) {
-                items.push({ name, option, qty, price });
+            try {
+                const canvas = await getQuotationCanvas();
+                const link = document.createElement('a');
+                link.download = `견적서_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                screenshotBtn.innerText = '🖼️ 이미지 저장';
+            } catch (err) {
+                alert('이미지 저장 오류');
+                screenshotBtn.innerText = '🖼️ 이미지 저장';
             }
         });
+    }
 
-        if (items.length === 0) {
-            alert('대장님, 저장할 품목이 하나도 없습니다!');
-            return;
+    // --- Quantity Calculator (v5.0) ---
+    const calcWidthInput = document.getElementById('calc-width');
+    const calcHeightInput = document.getElementById('calc-height');
+    const calcTotalAreaEl = document.getElementById('calc-total-area');
+    const prodWidthInput = document.getElementById('prod-width');
+    const prodHeightInput = document.getElementById('prod-height');
+    const calcNeededQtyEl = document.getElementById('calc-needed-qty');
+    const calcExactQtyEl = document.getElementById('calc-exact-qty');
+    const addToQuoteBtn = document.getElementById('add-to-quote-btn');
+    const presetBtns = document.querySelectorAll('.preset-btn');
+    const customSizeInputs = document.getElementById('custom-size-inputs');
+
+    function calculateNeededQty() {
+        if (!calcWidthInput || !calcHeightInput || !calcTotalAreaEl) return;
+        const w = parseFloat(calcWidthInput.value) || 0;
+        const h = parseFloat(calcHeightInput.value) || 0;
+        const area = w * h;
+        calcTotalAreaEl.innerText = area.toFixed(2);
+        const pw = parseFloat(prodWidthInput.value) || 30;
+        const ph = parseFloat(prodHeightInput.value) || 30;
+        const pArea = (pw / 100) * (ph / 100);
+        if (pArea > 0 && area > 0) {
+            const exact = area / pArea;
+            const needed = Math.ceil(exact);
+            calcExactQtyEl.innerText = exact.toFixed(2);
+            calcNeededQtyEl.innerText = needed.toLocaleString('ko-KR');
+        } else {
+            calcExactQtyEl.innerText = "0.00";
+            calcNeededQtyEl.innerText = "0";
         }
+    }
 
-        const activeAccountType = document.querySelector('.account-tab.active').dataset.type;
-        const discountRate = discountRateInput.value;
-
-        const newData = {
-            id: Date.now(),
-            customer,
-            items,
-            accountType: activeAccountType,
-            discountRate: discountRate,
-            isFav: false
-        };
-
-        const currentData = getStorageData();
-        currentData.push(newData);
-        setStorageData(currentData);
-        alert('성공적으로 저장되었습니다! 사이드바 목록에서 확인하세요.');
+    [calcWidthInput, calcHeightInput, prodWidthInput, prodHeightInput].forEach(inp => {
+        if (inp) inp.addEventListener('input', calculateNeededQty);
     });
 
-    function loadQuotation(data) {
-        if (!confirm(`'${data.customer || '수신인 미정'}' 견적 데이터를 불러올까요?\n현재 작성 중인 내용은 사라집니다.`)) return;
-
-        // Reset
-        itemBody.innerHTML = '';
-        document.getElementById('customerName').innerText = data.customer;
-        discountRateInput.value = data.discountRate;
-        discountLabelEl.innerText = data.discountRate;
-
-        // Restore Rows
-        data.items.forEach(item => {
-            addRowData(item);
-        });
-
-        // Restore Account Tab (Tax issue or not)
-        const accountTabs = document.querySelectorAll('.account-tab');
-        accountTabs.forEach(tab => {
-            if (tab.dataset.type === data.accountType) {
-                tab.click();
+    presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            presetBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (btn.dataset.type === 'custom') {
+                if (customSizeInputs) customSizeInputs.style.display = 'flex';
+            } else {
+                if (customSizeInputs) customSizeInputs.style.display = 'none';
+                if (btn.dataset.w) prodWidthInput.value = btn.dataset.w;
+                if (btn.dataset.h) prodHeightInput.value = btn.dataset.h;
+                calculateNeededQty();
             }
         });
+    });
 
-        updateTotals();
+    if (addToQuoteBtn) {
+        addToQuoteBtn.addEventListener('click', () => {
+            const qty = calcNeededQtyEl.innerText.replace(/,/g, '');
+            if (qty === "0") {
+                alert('대장님, 수량이 0입니다!');
+                return;
+            }
+            const quoteTab = Array.from(navTabs).find(t => t.dataset.tab === 'quotation');
+            if (quoteTab) quoteTab.click();
+            
+            const activeBtn = document.querySelector('.preset-btn.active');
+            const prodSize = `${prodWidthInput.value}cm × ${prodHeightInput.value}cm`;
+            let prodLabel = activeBtn ? activeBtn.innerText.split('\n')[0].trim() : "제품";
+            if (prodLabel.includes('직접 입력')) prodLabel = "제품";
+
+            addRow(`${prodLabel} (수량 계산 반영)`, `규격: ${prodSize}`, qty, "0");
+            alert('견적서에 추가되었습니다!');
+        });
     }
 
-    function addRowData(item) {
-        addRow(); // Adds an empty row
-        const lastRow = itemBody.lastElementChild;
-        lastRow.querySelector('.item-name').innerText = item.name;
-        lastRow.querySelector('.item-option').innerText = item.option;
-        lastRow.querySelector('.item-qty').innerText = item.qty;
-        lastRow.querySelector('.item-price').innerText = item.price;
-    }
-
-    renderList(); // Initial render
-
-    // --- Mobile Interactivity (v4.0) ---
-    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-    const mobileOverlay = document.getElementById('mobile-overlay');
-    const sidebar = document.getElementById('sidebar');
-
-    function toggleMobileMenu() {
-        sidebar.classList.toggle('active');
-        mobileOverlay.classList.toggle('active');
-    }
-
-    mobileMenuBtn.addEventListener('click', toggleMobileMenu);
-    mobileOverlay.addEventListener('click', toggleMobileMenu);
-
+    // --- Core Functions (addRow, updateTotals, etc.) ---
     function addRow(name = "", option = "", qty = "", price = "") {
+        if (!itemBody) return;
         const tr = document.createElement('tr');
         const rowCount = itemBody.children.length + 1;
-
-        // 천단위 콤마 포맷팅 (가격/수량이 있다면)
-        const displayPrice = price ? Number(price).toLocaleString('ko-KR') : "";
-        const displayQty = qty ? Number(qty).toLocaleString('ko-KR') : "";
+        const displayPrice = price ? Number(stripCommas(price)).toLocaleString('ko-KR') : "";
+        const displayQty = qty ? Number(stripCommas(qty)).toLocaleString('ko-KR') : "";
 
         tr.innerHTML = `
             <td>${rowCount}</td>
-            <td><div class="editable-cell item-name" contenteditable="true" data-placeholder="상품명">${name}</div></td>
-            <td><div class="editable-cell item-option" contenteditable="true" data-placeholder="규격">${option}</div></td>
-            <td><div class="editable-cell item-qty" contenteditable="true" data-placeholder="입력">${displayQty}</div></td>
-            <td><div class="editable-cell item-price" contenteditable="true" data-placeholder="입력">${displayPrice}</div></td>
+            <td><div class="editable-cell item-name" contenteditable="true">${name}</div></td>
+            <td><div class="editable-cell item-option" contenteditable="true">${option}</div></td>
+            <td><div class="editable-cell item-qty" contenteditable="true">${displayQty}</div></td>
+            <td><div class="editable-cell item-price" contenteditable="true">${displayPrice}</div></td>
             <td class="text-right item-row-total"></td>
             <td class="no-print"><button class="btn-danger remove-row">×</button></td>
         `;
 
-        // Add event listeners to editable cells
-        const editables = tr.querySelectorAll('.editable-cell');
-        editables.forEach(cell => {
-            cell.addEventListener('input', (e) => {
-                if (cell.classList.contains('item-qty') || cell.classList.contains('item-price')) {
-                    const val = cell.innerText.trim();
-                    if (!val.startsWith('=')) {
-                        const numericValue = stripCommas(val);
-                        if (!isNaN(numericValue) && val !== '') {
-                            const formatted = Number(numericValue).toLocaleString('ko-KR');
-                            if (cell.innerText !== formatted) {
-                                // Save cursor position accurately
-                                const selection = window.getSelection();
-                                if (selection.rangeCount > 0) {
-                                    const range = selection.getRangeAt(0);
-                                    const cursorOffset = range.startOffset;
-                                    const textBeforeCursor = cell.innerText.substring(0, cursorOffset);
-                                    const digitsBeforeCursor = textBeforeCursor.replace(/,/g, '').length;
-
-                                    cell.innerText = formatted;
-
-                                    // Restore cursor by counting digits from start
-                                    let newOffset = 0;
-                                    let digitsCount = 0;
-                                    const textNodes = cell.childNodes;
-                                    if (textNodes.length > 0) {
-                                        const newRange = document.createRange();
-                                        while (newOffset < formatted.length && digitsCount < digitsBeforeCursor) {
-                                            if (formatted[newOffset] !== ',') digitsCount++;
-                                            newOffset++;
-                                        }
-                                        newRange.setStart(textNodes[0], newOffset);
-                                        newRange.collapse(true);
-                                        selection.removeAllRanges();
-                                        selection.addRange(newRange);
-                                    }
-                                } else {
-                                    cell.innerText = formatted;
-                                }
-                            }
-                        }
-                    }
-                }
+        tr.querySelectorAll('.editable-cell').forEach(cell => {
+            cell.addEventListener('input', () => {
                 updateTotals();
             });
-
-            // Special handling for Formula on blur
-            if (cell.classList.contains('item-price')) {
-                cell.addEventListener('blur', () => {
-                    const val = cell.innerText.trim();
-                    if (val.startsWith('=')) {
-                        const result = evaluateFormula(val.substring(1));
-                        cell.innerText = result > 0 ? result.toLocaleString('ko-KR') : '';
-                        updateTotals();
-                    }
-                });
-            }
         });
 
-        // Remove row
         tr.querySelector('.remove-row').addEventListener('click', () => {
             tr.remove();
             reorderNumbers();
@@ -443,76 +285,113 @@ document.addEventListener('DOMContentLoaded', () => {
 
         itemBody.appendChild(tr);
         reorderNumbers();
+        updateTotals();
     }
 
-    function stripCommas(str) {
-        return str.toString().replace(/,/g, '');
-    }
-
-    function evaluateFormula(formula) {
-        try {
-            const cleanedFormula = stripCommas(formula);
-            const sanitized = cleanedFormula.replace(/[^0-9+\-*/().]/g, '');
-            const result = new Function(`return ${sanitized}`)();
-            return isFinite(result) ? Math.floor(result) : 0;
-        } catch (e) {
-            console.error('Formula error:', e);
-            return 0;
-        }
-    }
+    function stripCommas(str) { return str.toString().replace(/,/g, ''); }
 
     function reorderNumbers() {
-        const rows = itemBody.querySelectorAll('tr');
-        rows.forEach((row, index) => {
-            row.cells[0].innerText = index + 1;
-        });
-    }
-
-    function formatKRW(number) {
-        return new Intl.NumberFormat('ko-KR', {
-            style: 'currency',
-            currency: 'KRW',
-            currencyDisplay: 'symbol'
-        }).format(number).replace('₩', '￦');
+        itemBody.querySelectorAll('tr').forEach((r, i) => r.cells[0].innerText = i + 1);
     }
 
     function updateTotals() {
         const rows = itemBody.querySelectorAll('tr');
-        let totalIncoming = 0; // 총 합계 (입력된 금액의 합)
-
-        rows.forEach(row => {
-            const qtyEl = row.querySelector('.item-qty');
-            const qty = parseFloat(stripCommas(qtyEl.innerText)) || 0;
-
-            const priceEl = row.querySelector('.item-price');
-            const priceVal = priceEl.innerText.trim();
-
-            let price = 0;
-            if (priceVal.startsWith('=')) {
-                price = evaluateFormula(priceVal.substring(1));
-            } else {
-                price = parseFloat(stripCommas(priceVal)) || 0;
-            }
-
-            const rowTotal = qty * price;
-
-            const rowTotalEl = row.querySelector('.item-row-total');
-            rowTotalEl.innerText = rowTotal > 0 ? rowTotal.toLocaleString('ko-KR') : '';
-            totalIncoming += rowTotal;
+        let total = 0;
+        rows.forEach(r => {
+            const q = parseFloat(stripCommas(r.querySelector('.item-qty').innerText)) || 0;
+            const p = parseFloat(stripCommas(r.querySelector('.item-price').innerText)) || 0;
+            const rowTotal = q * p;
+            r.querySelector('.item-row-total').innerText = rowTotal > 0 ? rowTotal.toLocaleString('ko-KR') : '';
+            total += rowTotal;
         });
 
-        const discountRate = parseFloat(discountRateInput.value) || 0;
-        const discountAmount = Math.floor(totalIncoming * (discountRate / 100));
+        const discRate = parseFloat(discountRateInput.value) || 0;
+        const discAmount = Math.floor(total * (discRate / 100));
+        const final = total - discAmount;
 
-        // 최종 결제 금액 (총액에서 할인액만 차감)
-        const finalTotal = totalIncoming - discountAmount;
-
-        // Update DOM
-        subtotalEl.innerText = totalIncoming.toLocaleString('ko-KR');
-        discountAmountEl.innerText = `- ${discountAmount.toLocaleString('ko-KR')}`;
-        finalTotalEl.innerText = finalTotal.toLocaleString('ko-KR');
-        totalAmountTextEl.innerText = `￦ ${finalTotal.toLocaleString('ko-KR')}`;
+        subtotalEl.innerText = total.toLocaleString('ko-KR');
+        discountAmountEl.innerText = `- ${discAmount.toLocaleString('ko-KR')}`;
+        finalTotalEl.innerText = final.toLocaleString('ko-KR');
+        totalAmountTextEl.innerText = `￦ ${final.toLocaleString('ko-KR')}`;
+        if (discountLabelEl) discountLabelEl.innerText = discRate;
     }
 
-});
+    // --- Mobile Sidebar ---
+    function toggleMobileMenu() {
+        if (!sidebar || !mobileOverlay) return;
+        sidebar.classList.toggle('active');
+        mobileOverlay.classList.toggle('active');
+    }
+    if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+    if (mobileOverlay) mobileOverlay.addEventListener('click', toggleMobileMenu);
 
+    // --- Data Storage Logic (v3.0) ---
+    const saveDataBtn = document.getElementById('saveDataBtn');
+    const savedListEl = document.getElementById('savedList');
+    const favoriteListEl = document.getElementById('favoriteList');
+
+    window.antigravity_toggleFav = (id) => {
+        const data = getStorageData();
+        const item = data.find(i => i.id === id);
+        if (item) { item.isFav = !item.isFav; setStorageData(data); }
+    };
+
+    window.antigravity_deleteItem = (id) => {
+        if (confirm('삭제할까요?')) {
+            const data = getStorageData().filter(i => i.id !== id);
+            setStorageData(data);
+        }
+    };
+
+    function getStorageData() { return JSON.parse(localStorage.getItem('inspo_quotations') || '[]'); }
+    function setStorageData(data) { localStorage.setItem('inspo_quotations', JSON.stringify(data)); renderList(); }
+
+    function renderList() {
+        if (!savedListEl || !favoriteListEl) return;
+        const data = getStorageData();
+        savedListEl.innerHTML = ''; favoriteListEl.innerHTML = '';
+        if (data.length === 0) {
+            savedListEl.innerHTML = '<p class="empty-msg">내역 없음</p>';
+            return;
+        }
+        data.reverse().forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'saved-item';
+            div.innerHTML = `<div>${item.customer || '미정'}</div>
+                <div class="actions">
+                    <button onclick="event.stopPropagation(); window.antigravity_toggleFav(${item.id})">${item.isFav ? '★' : '☆'}</button>
+                    <button onclick="event.stopPropagation(); window.antigravity_deleteItem(${item.id})">🗑️</button>
+                </div>`;
+            div.onclick = () => loadQuotation(item);
+            savedListEl.appendChild(div);
+            if (item.isFav) favoriteListEl.appendChild(div.cloneNode(true));
+        });
+    }
+
+    function loadQuotation(data) {
+        if (!confirm('불러올까요?')) return;
+        itemBody.innerHTML = '';
+        if (data.customer) document.getElementById('customerName').innerText = data.customer;
+        discountRateInput.value = data.discountRate || 0;
+        data.items.forEach(i => addRow(i.name, i.option, i.qty, i.price));
+        updateTotals();
+    }
+
+    if (saveDataBtn) {
+        saveDataBtn.addEventListener('click', () => {
+            const items = Array.from(itemBody.querySelectorAll('tr')).map(r => ({
+                name: r.querySelector('.item-name').innerText,
+                option: r.querySelector('.item-option').innerText,
+                qty: r.querySelector('.item-qty').innerText,
+                price: r.querySelector('.item-price').innerText
+            }));
+            const data = getStorageData();
+            data.push({ id: Date.now(), customer: document.getElementById('customerName').innerText, items, discountRate: discountRateInput.value, isFav: false });
+            setStorageData(data);
+            alert('저장 완료!');
+        });
+    }
+
+    if (typeof calculateNeededQty === 'function') calculateNeededQty();
+    renderList();
+});

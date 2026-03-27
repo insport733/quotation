@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>자동 견적서 작성 프로그램 v4.7</title>
+    <title>자동 견적서 작성 프로그램 v5.3</title>
     <!-- Cache Busters for style and script -->
-    <link rel="stylesheet" href="style.css?v=4.7.0">
+    <link rel="stylesheet" href="style.css?v=5.3.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@400;600;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
         rel="stylesheet">
     <!-- PDF & Screenshot Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -79,124 +79,204 @@
             <div class="update-log-area card">
                 <h3>📝 업데이트 로그</h3>
                 <ul class="update-log-list">
-                    <li><strong>v4.7:</strong> 자주 사용하는 품목 퀵 버튼 추가</li>
-                    <li><strong>v4.6:</strong> 문자 발송 기능 삭제</li>
-                    <li><strong>v4.5:</strong> SMS 발송 기기 호환성 패치 및 기본 상품(헬스매트) 입력 적용</li>
-                    <li><strong>v4.4:</strong> 발송기능(TG/이메일) 테스트 중 중단</li>
+                    <li><strong>v5.3:</strong> 견적서 하단 합계 금액의 정렬 위치 수정 (수량 → 합계 열로 정렬)</li>
+                    <li><strong>v5.2:</strong> 견적서 작성 탭에서 가로/세로 입력(m) 제거 및 레이아웃 최적화</li>
+                    <li><strong>v5.1:</strong> 수량 계산기 레이아웃 변경 및 주요 규격(30*30, 50*50) 옵션 추가</li>
                 </ul>
             </div>
 
             <div class="version-tag">
-                Version: <strong>v4.7</strong>
+                Version: <strong>v5.3</strong>
             </div>
         </aside>
 
-        <!-- Main Content (Quotation Area) -->
+        <!-- Main Content Area -->
         <main class="main-content">
-            <div class="quotation-container card shadow" id="quotationArea">
-                <header class="q-header">
-                    <div class="q-title-box">
-                        <h1>견 &nbsp; 적 &nbsp; 서</h1>
-                    </div>
-                    <div class="q-info-container">
-                        <div class="q-customer-info">
-                            <div class="customer-box">
-                                <span id="customerName" class="customer-input" contenteditable="true"
-                                    placeholder="수신처 입력"></span>
-                                <span class="customer-suffix">귀하</span>
+            <!-- Navigation Tabs -->
+            <nav class="main-nav no-print">
+                <button type="button" class="nav-tab active" data-tab="quotation">📄 견적서 작성</button>
+                <button type="button" class="nav-tab" data-tab="calculator">📐 수량 계산기</button>
+            </nav>
+
+            <!-- Tab 1: Quotation View -->
+            <div id="quotation-view" class="tab-content active">
+                <div class="quotation-container card shadow" id="quotationArea">
+                    <header class="q-header">
+                        <div class="q-title-box">
+                            <h1>견 &nbsp; 적 &nbsp; 서</h1>
+                        </div>
+                        <div class="q-info-container">
+                            <div class="q-customer-info">
+                                <div class="customer-box">
+                                    <span id="customerName" class="customer-input" contenteditable="true"
+                                        placeholder="수신처 입력"></span>
+                                    <span class="customer-suffix">귀하</span>
+                                </div>
+                                <div class="q-meta-info">
+                                    <div class="q-date">작성일: <span id="currentDate"></span></div>
+                                    <div class="q-validity">유효기간: 발송일로부터 2주 이내</div>
+                                </div>
                             </div>
-                            <div class="q-meta-info">
-                                <div class="q-date">작성일: <span id="currentDate"></span></div>
-                                <div class="q-validity">유효기간: 발송일로부터 2주 이내</div>
+                            <div class="q-my-info">
+                                <table>
+                                    <tr>
+                                        <th>사업자번호</th>
+                                        <td colspan="3">733-86-02612</td>
+                                    </tr>
+                                    <tr>
+                                        <th>상 호</th>
+                                        <td>인스포트 주식회사</td>
+                                        <th>대 표 자</th>
+                                        <td>
+                                            <div class="representative-cell">
+                                                이진영
+                                                <img src="stamp.png" class="q-stamp" alt="직인">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>전화번호</th>
+                                        <td colspan="3">010-3151-7236</td>
+                                    </tr>
+                                </table>
                             </div>
                         </div>
-                        <div class="q-my-info">
-                            <table>
+                    </header>
+
+                    <div class="q-summary">
+                        <span class="total-text">합계금액 :</span>
+                        <span class="total-amount-krw" id="totalAmountText">￦ 0</span>
+                    </div>
+
+                    <div class="q-table-container">
+                        <table class="q-table" id="itemTable">
+                            <thead>
                                 <tr>
-                                    <th>사업자번호</th>
-                                    <td colspan="3">733-86-02612</td>
+                                    <th style="width: 5%;">No.</th>
+                                    <th style="width: 30%;">상품명</th>
+                                    <th style="width: 25%;">옵션(규격)</th>
+                                    <th style="width: 12%;">수량(개/㎡)</th>
+                                    <th style="width: 13%;">단가</th>
+                                    <th style="width: 10%;">합계</th>
+                                    <th class="no-print" style="width: 5%;">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemBody">
+                                <!-- Items will be injected here -->
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5" class="text-right"><strong>총 공급가액</strong></td>
+                                    <td class="text-right" id="subtotal">0</td>
+                                    <td class="no-print"></td>
                                 </tr>
                                 <tr>
-                                    <th>상 호</th>
-                                    <td>인스포트 주식회사</td>
-                                    <th>대 표 자</th>
-                                    <td>
-                                        <div class="representative-cell">
-                                            이진영
-                                            <img src="stamp.png" class="q-stamp" alt="직인">
-                                        </div>
-                                    </td>
+                                    <td colspan="5" class="text-right"><strong>할인금액 (<span
+                                                id="discountLabel">0</span>%)</strong></td>
+                                    <td class="text-right discount-text" id="discountAmount">0</td>
+                                    <td class="no-print"></td>
                                 </tr>
-                                <tr>
-                                    <th>전화번호</th>
-                                    <td colspan="3">010-3151-7236</td>
+                                <tr class="final-row">
+                                    <td colspan="5" class="text-right"><strong>최종 결제 금액 (합계)</strong></td>
+                                    <td class="text-right final-amount" id="finalTotal">0</td>
+                                    <td class="no-print"></td>
                                 </tr>
-                            </table>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <footer class="q-footer">
+                        <div class="account-container">
+                            <div class="account-tabs no-print">
+                                <button class="account-tab" data-type="issue">세금계산서 발행</button>
+                                <button class="account-tab active" data-type="no-issue">미발행</button>
+                            </div>
+                            <div class="account-info" id="accountInfo">
+                                카카오뱅크 3333-14-2092777 이진영
+                            </div>
+                        </div>
+                        <p class="footer-note">※ 위와 같이 견적합니다.</p>
+                    </footer>
+                </div>
+            </div>
+
+            <!-- Tab 2: Quantity Calculator View -->
+            <div id="calculator-view" class="tab-content no-print">
+                <div class="calculator-container card shadow">
+                    <div class="calc-header">
+                        <h2>📐 수량 계산기</h2>
+                        <p>시공 공간의 가로/세로 길이를 입력하면 필요한 제품 수량을 자동으로 계산합니다.</p>
+                    </div>
+
+                    <div class="calc-main-grid">
+                        <!-- Left: Inputs -->
+                        <div class="calc-inputs">
+                            <div class="calc-card">
+                                <h3>1. 제품 규격 선택</h3>
+                                <div class="size-presets">
+                                    <button class="preset-btn active" data-w="30" data-h="30">30 × 30cm<br><small>(방음재, 타일카페트)</small></button>
+                                    <button class="preset-btn" data-w="50" data-h="50">50 × 50cm<br><small>(헬스매트)</small></button>
+                                    <button class="preset-btn" data-w="100" data-h="100">1m × 1m<br><small>(기본 매트)</small></button>
+                                    <button class="preset-btn" data-type="custom">직접 입력</button>
+                                </div>
+                                <div id="custom-size-inputs" class="calc-input-row" style="display: none; margin-top: 1rem;">
+                                    <div class="calc-input-group">
+                                        <label>제품 가로 (cm)</label>
+                                        <input type="number" id="prod-width" value="30">
+                                    </div>
+                                    <div class="calc-input-group">
+                                        <label>제품 세로 (cm)</label>
+                                        <input type="number" id="prod-height" value="30">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="calc-card" style="margin-top: 1.5rem;">
+                                <h3>2. 시공 공간 입력</h3>
+                                <div class="calc-input-row">
+                                    <div class="calc-input-group">
+                                        <label for="calc-width">공간 가로 (m)</label>
+                                        <input type="number" id="calc-width" placeholder="0.0" step="0.1">
+                                    </div>
+                                    <div class="calc-input-group">
+                                        <label for="calc-height">공간 세로 (m)</label>
+                                        <input type="number" id="calc-height" placeholder="0.0" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="calc-area-display">
+                                    총 면적: <span id="calc-total-area">0.00</span> ㎡
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Results -->
+                        <div class="calc-results">
+                            <div class="result-card">
+                                <div class="result-header">계산 결과</div>
+                                <div class="result-main">
+                                    <span id="calc-needed-qty">0</span>
+                                    <small>개</small>
+                                </div>
+                                <div class="result-sub">
+                                    정확히 <span id="calc-exact-qty">0.00</span> 개 필요
+                                </div>
+                                <div class="result-info">
+                                    <p>💡 <b>Tip</b>: 시공 환경에 따라 자투리가 발생하므로<br>약 3~5% 정도의 여유분을 포함하는 것이 좋습니다.</p>
+                                </div>
+                                <button id="add-to-quote-btn" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 2rem;">
+                                    ✅ 이 수량을 견적서에 추가하기
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </header>
-
-                <div class="q-summary">
-                    <span class="total-text">합계금액 :</span>
-                    <span class="total-amount-krw" id="totalAmountText">￦ 0</span>
                 </div>
-
-                <div class="q-table-container">
-                    <table class="q-table" id="itemTable">
-                        <thead>
-                            <tr>
-                                <th style="width: 5%;">No.</th>
-                                <th style="width: 30%;">상품명</th>
-                                <th style="width: 15%;">옵션(규격)</th>
-                                <th style="width: 10%;">수량</th>
-                                <th style="width: 15%;">단가</th>
-                                <th style="width: 20%;">합계</th>
-                                <th class="no-print" style="width: 5%;">삭제</th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemBody">
-                            <!-- Items will be injected here -->
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="5" class="text-right"><strong>총 공급가액</strong></td>
-                                <td class="text-right" id="subtotal">0</td>
-                                <td class="no-print"></td>
-                            </tr>
-                            <tr>
-                                <td colspan="5" class="text-right"><strong>할인금액 (<span
-                                            id="discountLabel">0</span>%)</strong></td>
-                                <td class="text-right discount-text" id="discountAmount">0</td>
-                                <td class="no-print"></td>
-                            </tr>
-                            <tr class="final-row">
-                                <td colspan="5" class="text-right"><strong>최종 결제 금액 (합계)</strong></td>
-                                <td class="text-right final-amount" id="finalTotal">0</td>
-                                <td class="no-print"></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-
-                <footer class="q-footer">
-                    <div class="account-container">
-                        <div class="account-tabs no-print">
-                            <button class="account-tab" data-type="issue">세금계산서 발행</button>
-                            <button class="account-tab active" data-type="no-issue">미발행</button>
-                        </div>
-                        <div class="account-info" id="accountInfo">
-                            카카오뱅크 3333-14-2092777 이진영
-                        </div>
-                    </div>
-                    <p class="footer-note">※ 위와 같이 견적합니다.</p>
-                </footer>
             </div>
         </main>
     </div>
 
     <div id="mobile-overlay" class="no-print"></div>
 
-    <script src="script.js?v=4.7.0"></script>
+    <script src="script.js?v=5.3.0"></script>
 </body>
 
 </html>
