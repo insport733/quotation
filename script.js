@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 v5.3 스크립트 로드 완료');
+    console.log('🚀 v5.4 스크립트 로드 완료');
 
     // --- Core Selectors ---
     const navTabs = document.querySelectorAll('.nav-tab');
@@ -80,6 +80,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Command Buttons ---
     if (addRowBtn) addRowBtn.addEventListener('click', () => addRow());
+
+    const applyDiscountBtn = document.getElementById('applyDiscountBtn');
+    if (applyDiscountBtn) {
+        applyDiscountBtn.addEventListener('click', () => {
+            updateTotals();
+            alert('대장님, 할인율이 적용되었습니다!');
+        });
+    }
 
     const addMat20Btn = document.getElementById('addMat20');
     const addMat25Btn = document.getElementById('addMat25');

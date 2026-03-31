@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>자동 견적서 작성 프로그램 v5.3</title>
+    <title>자동 견적서 작성 프로그램 v5.4</title>
     <!-- Cache Busters for style and script -->
-    <link rel="stylesheet" href="style.css?v=5.3.0">
+    <link rel="stylesheet" href="style.css?v=5.4.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -71,7 +71,10 @@
                 <h3>⚙️ 설정</h3>
                 <div class="input-group">
                     <label for="discountRate">할인율 (%)</label>
-                    <input type="number" id="discountRate" value="10" min="0" max="100">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="number" id="discountRate" value="10" min="0" max="100">
+                        <button id="applyDiscountBtn" class="btn btn-primary" style="padding: 0.5rem 1rem; width: auto;">적용</button>
+                    </div>
                 </div>
 
             </div>
@@ -79,6 +82,7 @@
             <div class="update-log-area card">
                 <h3>📝 업데이트 로그</h3>
                 <ul class="update-log-list">
+                    <li><strong>v5.4:</strong> 설정 영역의 할인율 직접 입력 옆 '적용' 버튼 추가 및 UI 최적화</li>
                     <li><strong>v5.3:</strong> 견적서 하단 합계 금액의 정렬 위치 수정 (수량 → 합계 열로 정렬)</li>
                     <li><strong>v5.2:</strong> 견적서 작성 탭에서 가로/세로 입력(m) 제거 및 레이아웃 최적화</li>
                     <li><strong>v5.1:</strong> 수량 계산기 레이아웃 변경 및 주요 규격(30*30, 50*50) 옵션 추가</li>
@@ -86,7 +90,7 @@
             </div>
 
             <div class="version-tag">
-                Version: <strong>v5.3</strong>
+                Version: <strong>v5.4</strong>
             </div>
         </aside>
 
@@ -276,7 +280,7 @@
 
     <div id="mobile-overlay" class="no-print"></div>
 
-    <script src="script.js?v=5.3.0"></script>
+    <script src="script.js?v=5.4.0"></script>
 </body>
 
 </html>
